@@ -14,7 +14,7 @@ import Slider from '@react-native-community/slider';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
-import { Download, Upload, FileText } from 'lucide-react-native';
+import { Download, Upload, FileText, Trash2 } from 'lucide-react-native';
 
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { useEntriesStore } from '../../src/stores/entriesStore';
@@ -26,6 +26,7 @@ export default function SettingsScreen() {
   const platforms = useEntriesStore((state) => state.platforms);
   const caAdjustments = useEntriesStore((state) => state.caAdjustments);
   const restoreData = useEntriesStore((state) => state.restoreData);
+  const clearAllEntries = useEntriesStore((state) => state.clearAllEntries);
 
   const [editingMileage, setEditingMileage] = useState(false);
   const [mileageInput, setMileageInput] = useState(settings.mileageRate.toString());
@@ -154,6 +155,30 @@ export default function SettingsScreen() {
     } catch (error) {
       Alert.alert('Restore Failed', 'Unable to restore from backup file.');
     }
+  };
+
+  // Clear all data
+  const handleClearAllData = () => {
+    if (entries.length === 0) {
+      Alert.alert('No Data', 'There is no data to clear.');
+      return;
+    }
+
+    Alert.alert(
+      'Clear All Data',
+      `This will permanently delete all ${entries.length} entries and cannot be undone. Are you sure?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: () => {
+            clearAllEntries();
+            Alert.alert('Success', 'All data has been cleared.');
+          },
+        },
+      ]
+    );
   };
 
   const handleMileageSave = () => {
@@ -397,9 +422,19 @@ export default function SettingsScreen() {
             Danger Zone
           </Text>
           <View style={[styles.sectionCard, styles.sectionCardDanger]}>
-            <Text style={styles.placeholderText}>
-              Clear all data option coming soon
-            </Text>
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleClearAllData}
+              activeOpacity={0.7}
+            >
+              <Trash2 color="#DC2626" size={22} />
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionLabelDanger}>Clear All Data</Text>
+                <Text style={styles.actionDescription}>
+                  Delete all entries and adjustments
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -555,6 +590,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#111827',
+  },
+  actionLabelDanger: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#DC2626',
   },
   actionDescription: {
     fontSize: 13,
