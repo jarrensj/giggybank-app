@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Trash2, Calendar } from 'lucide-react-native';
 
 import { useEntriesStore } from '../../../src/stores/entriesStore';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
@@ -18,6 +18,41 @@ import {
   formatHours,
 } from '../../../src/utils/calculations';
 import ConfirmDialog from '../../../src/components/ConfirmDialog';
+
+// Quarterly tax deadlines (month, day)
+const TAX_DEADLINES = [
+  { month: 0, day: 15, quarter: 'Q4' },  // Jan 15 for Q4
+  { month: 3, day: 15, quarter: 'Q1' },  // Apr 15 for Q1
+  { month: 5, day: 15, quarter: 'Q2' },  // Jun 15 for Q2
+  { month: 8, day: 15, quarter: 'Q3' },  // Sep 15 for Q3
+];
+
+function getNextTaxDeadline() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  for (const deadline of TAX_DEADLINES) {
+    const deadlineDate = new Date(currentYear, deadline.month, deadline.day);
+    if (deadlineDate > now) {
+      return { date: deadlineDate, quarter: deadline.quarter };
+    }
+  }
+
+  // Next deadline is Jan 15 of next year
+  return {
+    date: new Date(currentYear + 1, 0, 15),
+    quarter: 'Q4',
+  };
+}
+
+function getDaysUntil(date) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  const diff = target - now;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
 
 export default function TodayScreen() {
   const router = useRouter();
@@ -45,6 +80,21 @@ export default function TodayScreen() {
       setDeleteId(null);
     }
   };
+
+  // Calculate next tax deadline
+  const taxDeadline = useMemo(() => {
+    const { date, quarter } = getNextTaxDeadline();
+    const daysUntil = getDaysUntil(date);
+    return {
+      date,
+      quarter,
+      daysUntil,
+      formatted: date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }),
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -115,6 +165,36 @@ export default function TodayScreen() {
             <Text style={styles.quickStatLabel}>Time</Text>
           </View>
         </View>
+
+        {/* Tax Deadline Card */}
+        {taxDeadline.daysUntil <= 30 && (
+          <View style={[
+            styles.deadlineCard,
+            taxDeadline.daysUntil <= 7 && styles.deadlineCardUrgent,
+          ]}>
+            <View style={styles.deadlineIconContainer}>
+              <Calendar
+                color={taxDeadline.daysUntil <= 7 ? '#DC2626' : '#F59E0B'}
+                size={24}
+              />
+            </View>
+            <View style={styles.deadlineInfo}>
+              <Text style={[
+                styles.deadlineTitle,
+                taxDeadline.daysUntil <= 7 && styles.deadlineTitleUrgent,
+              ]}>
+                {taxDeadline.quarter} Taxes Due {taxDeadline.formatted}
+              </Text>
+              <Text style={styles.deadlineSubtext}>
+                {taxDeadline.daysUntil === 0
+                  ? 'Due today!'
+                  : taxDeadline.daysUntil === 1
+                  ? '1 day left'
+                  : `${taxDeadline.daysUntil} days left`}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Add Buttons */}
         <View style={styles.addButtonsRow}>
@@ -318,6 +398,46 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: '#E5E7EB',
     marginHorizontal: 8,
+  },
+  // Tax deadline styles
+  deadlineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 12,
+  },
+  deadlineCardUrgent: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  deadlineIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deadlineInfo: {
+    flex: 1,
+  },
+  deadlineTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  deadlineTitleUrgent: {
+    color: '#991B1B',
+  },
+  deadlineSubtext: {
+    fontSize: 13,
+    color: '#A16207',
+    marginTop: 2,
   },
   addButtonsRow: {
     flexDirection: 'row',
