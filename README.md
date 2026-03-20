@@ -72,3 +72,28 @@ A gig economy earnings tracker that helps drivers see their true take-home pay a
    npx expo start
    ```
 
+3. Run on iOS
+
+   ```bash
+   npx expo run:ios
+   ```
+
+## Build & Submit
+
+Build for production:
+
+```bash
+eas build --platform ios --profile production
+```
+
+Submit to App Store:
+
+```bash
+eas submit --platform ios
+```
+
+Build with auto-submit to App Store:
+
+```bash
+eas build --platform ios --auto-submit
+```
