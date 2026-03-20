@@ -275,6 +275,9 @@ export default function ExportReportScreen() {
 
       {/* Export Button */}
       <View style={styles.footer}>
+        <Text style={styles.disclaimerText}>
+          Not tax advice. Consult a tax professional.
+        </Text>
         <TouchableOpacity
           style={[styles.exportButton, monthData.entryCount === 0 && styles.exportButtonDisabled]}
           onPress={generatePDF}
@@ -436,5 +439,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 });

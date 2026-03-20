@@ -475,6 +475,13 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Disclaimer */}
+        <View style={styles.disclaimer}>
+          <Text style={styles.disclaimerText}>
+            This app provides estimates for informational purposes only and does not constitute tax, legal, or financial advice. Consult a qualified tax professional for advice specific to your situation.
+          </Text>
+        </View>
+
         {/* Bottom Spacer */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -632,5 +639,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     marginTop: 2,
+  },
+  disclaimer: {
+    padding: 16,
+    marginBottom: 20,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
