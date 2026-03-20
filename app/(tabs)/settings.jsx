@@ -1,16 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
+  TouchableOpacity,
+  Switch,
+  TextInput,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Slider from '@react-native-community/slider';
 
 import { useSettingsStore } from '../../src/stores/settingsStore';
 
 export default function SettingsScreen() {
   const settings = useSettingsStore();
+  const updateSetting = useSettingsStore((state) => state.updateSetting);
+
+  const [editingMileage, setEditingMileage] = useState(false);
+  const [mileageInput, setMileageInput] = useState(settings.mileageRate.toString());
+  const [editingWear, setEditingWear] = useState(false);
+  const [wearInput, setWearInput] = useState(settings.vehicleWearPerMile.toString());
+
+  const handleTaxRateChange = (value) => {
+    updateSetting('taxRate', Math.round(value));
+  };
+
+  const handleMileageSave = () => {
+    const value = parseFloat(mileageInput);
+    if (!isNaN(value) && value >= 0) {
+      updateSetting('mileageRate', value);
+    }
+    setEditingMileage(false);
+  };
+
+  const handleWearSave = () => {
+    const value = parseFloat(wearInput);
+    if (!isNaN(value) && value >= 0) {
+      updateSetting('vehicleWearPerMile', value);
+    }
+    setEditingWear(false);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -26,14 +56,25 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tax Settings</Text>
           <View style={styles.sectionCard}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
+            <View style={styles.settingRowColumn}>
+              <View style={styles.settingRowHeader}>
                 <Text style={styles.settingLabel}>Tax Rate</Text>
-                <Text style={styles.settingDescription}>
-                  Percentage set aside for taxes
-                </Text>
+                <Text style={styles.settingValue}>{settings.taxRate}%</Text>
               </View>
-              <Text style={styles.settingValue}>{settings.taxRate}%</Text>
+              <Text style={styles.settingDescription}>
+                Percentage set aside for taxes
+              </Text>
+              <Slider
+                style={styles.slider}
+                minimumValue={0}
+                maximumValue={50}
+                step={1}
+                value={settings.taxRate}
+                onValueChange={handleTaxRateChange}
+                minimumTrackTintColor="#3B82F6"
+                maximumTrackTintColor="#E5E7EB"
+                thumbTintColor="#3B82F6"
+              />
             </View>
 
             <View style={styles.settingDivider} />
@@ -45,9 +86,12 @@ export default function SettingsScreen() {
                   Include 15.3% SE tax in calculations
                 </Text>
               </View>
-              <Text style={styles.settingValue}>
-                {settings.includeSelfEmploymentTax ? 'ON' : 'OFF'}
-              </Text>
+              <Switch
+                value={settings.includeSelfEmploymentTax}
+                onValueChange={(value) => updateSetting('includeSelfEmploymentTax', value)}
+                trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
+                thumbColor={settings.includeSelfEmploymentTax ? '#3B82F6' : '#FFFFFF'}
+              />
             </View>
           </View>
         </View>
@@ -56,15 +100,37 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mileage</Text>
           <View style={styles.sectionCard}>
-            <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => {
+                setMileageInput(settings.mileageRate.toString());
+                setEditingMileage(true);
+              }}
+              activeOpacity={0.7}
+            >
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>IRS Mileage Rate</Text>
                 <Text style={styles.settingDescription}>
-                  Standard deduction per mile
+                  Standard deduction per mile (2024: $0.67)
                 </Text>
               </View>
-              <Text style={styles.settingValue}>${settings.mileageRate}/mi</Text>
-            </View>
+              {editingMileage ? (
+                <View style={styles.inlineInput}>
+                  <Text style={styles.inputPrefix}>$</Text>
+                  <TextInput
+                    style={styles.inlineTextInput}
+                    value={mileageInput}
+                    onChangeText={setMileageInput}
+                    keyboardType="decimal-pad"
+                    autoFocus
+                    onBlur={handleMileageSave}
+                    onSubmitEditing={handleMileageSave}
+                  />
+                </View>
+              ) : (
+                <Text style={styles.settingValue}>${settings.mileageRate}/mi</Text>
+              )}
+            </TouchableOpacity>
 
             <View style={styles.settingDivider} />
 
@@ -75,12 +141,50 @@ export default function SettingsScreen() {
                   Additional wear cost per mile
                 </Text>
               </View>
-              <Text style={styles.settingValue}>
-                {settings.includeVehicleWear
-                  ? `$${settings.vehicleWearPerMile}/mi`
-                  : 'OFF'}
-              </Text>
+              <Switch
+                value={settings.includeVehicleWear}
+                onValueChange={(value) => updateSetting('includeVehicleWear', value)}
+                trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
+                thumbColor={settings.includeVehicleWear ? '#3B82F6' : '#FFFFFF'}
+              />
             </View>
+
+            {settings.includeVehicleWear && (
+              <>
+                <View style={styles.settingDivider} />
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={() => {
+                    setWearInput(settings.vehicleWearPerMile.toString());
+                    setEditingWear(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingLabel}>Wear Rate</Text>
+                    <Text style={styles.settingDescription}>
+                      Cost per mile for maintenance
+                    </Text>
+                  </View>
+                  {editingWear ? (
+                    <View style={styles.inlineInput}>
+                      <Text style={styles.inputPrefix}>$</Text>
+                      <TextInput
+                        style={styles.inlineTextInput}
+                        value={wearInput}
+                        onChangeText={setWearInput}
+                        keyboardType="decimal-pad"
+                        autoFocus
+                        onBlur={handleWearSave}
+                        onSubmitEditing={handleWearSave}
+                      />
+                    </View>
+                  ) : (
+                    <Text style={styles.settingValue}>${settings.vehicleWearPerMile}/mi</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -95,9 +199,12 @@ export default function SettingsScreen() {
                   Track CA guaranteed earnings adjustments
                 </Text>
               </View>
-              <Text style={styles.settingValue}>
-                {settings.californiaMode ? 'ON' : 'OFF'}
-              </Text>
+              <Switch
+                value={settings.californiaMode}
+                onValueChange={(value) => updateSetting('californiaMode', value)}
+                trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
+                thumbColor={settings.californiaMode ? '#3B82F6' : '#FFFFFF'}
+              />
             </View>
           </View>
         </View>
@@ -226,5 +333,40 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  // Interactive controls
+  settingRowColumn: {
+    padding: 16,
+  },
+  settingRowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+    marginTop: 8,
+  },
+  inlineInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inputPrefix: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  inlineTextInput: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3B82F6',
+    minWidth: 50,
+    textAlign: 'right',
+    padding: 0,
   },
 });
