@@ -10,17 +10,19 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
-import { Download, Upload, FileText, Trash2 } from 'lucide-react-native';
+import { Download, Upload, FileText, Trash2, ChevronRight } from 'lucide-react-native';
 import Constants from 'expo-constants';
 
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { useEntriesStore } from '../../src/stores/entriesStore';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const settings = useSettingsStore();
   const updateSetting = useSettingsStore((state) => state.updateSetting);
   const entries = useEntriesStore((state) => state.entries);
@@ -365,6 +367,27 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Reports Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reports</Text>
+          <View style={styles.sectionCard}>
+            <TouchableOpacity
+              style={styles.linkRow}
+              onPress={() => router.push('/export-report')}
+              activeOpacity={0.7}
+            >
+              <FileText color="#3B82F6" size={22} />
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionLabel}>Monthly Tax Report</Text>
+                <Text style={styles.actionDescription}>
+                  Generate PDF report for any month
+                </Text>
+              </View>
+              <ChevronRight color="#9CA3AF" size={20} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Data Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data</Text>
@@ -581,6 +604,12 @@ const styles = StyleSheet.create({
   },
   // Action buttons
   actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
