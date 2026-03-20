@@ -60,6 +60,7 @@ export default function HistoryScreen() {
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [expandedWeeks, setExpandedWeeks] = useState({});
   const [deleteId, setDeleteId] = useState(null);
+  const [showAnalytics, setShowAnalytics] = useState(true);
 
   // Filter entries by platform
   const filteredEntries = useMemo(() => {
@@ -76,6 +77,40 @@ export default function HistoryScreen() {
   const usedPlatforms = useMemo(() => {
     const usedIds = new Set(entries.map((e) => e.platformId));
     return platforms.filter((p) => usedIds.has(p.id));
+  }, [entries, platforms]);
+
+  // Calculate platform breakdown analytics
+  const platformBreakdown = useMemo(() => {
+    if (entries.length === 0) return [];
+
+    const breakdown = {};
+    let totalEarnings = 0;
+
+    entries.forEach((entry) => {
+      if (!breakdown[entry.platformId]) {
+        breakdown[entry.platformId] = {
+          platformId: entry.platformId,
+          earnings: 0,
+          trips: 0,
+          hours: 0,
+          miles: 0,
+        };
+      }
+      breakdown[entry.platformId].earnings += entry.earnings || 0;
+      breakdown[entry.platformId].trips += 1;
+      breakdown[entry.platformId].hours += entry.hours || 0;
+      breakdown[entry.platformId].miles += entry.miles || 0;
+      totalEarnings += entry.earnings || 0;
+    });
+
+    // Convert to array, calculate percentages, and sort by earnings
+    return Object.values(breakdown)
+      .map((item) => ({
+        ...item,
+        name: getPlatformName(item.platformId),
+        percentage: totalEarnings > 0 ? (item.earnings / totalEarnings) * 100 : 0,
+      }))
+      .sort((a, b) => b.earnings - a.earnings);
   }, [entries, platforms]);
 
   const getPlatformName = (platformId) => {
@@ -212,6 +247,71 @@ export default function HistoryScreen() {
                 <Text style={styles.summaryLabel}>Total Gross</Text>
               </View>
             </View>
+          </View>
+        )}
+
+        {/* Platform Analytics */}
+        {entries.length > 0 && platformBreakdown.length > 1 && (
+          <View style={styles.analyticsSection}>
+            <TouchableOpacity
+              style={styles.analyticsHeader}
+              onPress={() => setShowAnalytics(!showAnalytics)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.analyticsSectionTitle}>Platform Breakdown</Text>
+              {showAnalytics ? (
+                <ChevronUp color="#9CA3AF" size={20} />
+              ) : (
+                <ChevronDown color="#9CA3AF" size={20} />
+              )}
+            </TouchableOpacity>
+
+            {showAnalytics && (
+              <View style={styles.analyticsCard}>
+                {platformBreakdown.map((platform, index) => (
+                  <View
+                    key={platform.platformId}
+                    style={[
+                      styles.platformRow,
+                      index < platformBreakdown.length - 1 && styles.platformRowBorder,
+                    ]}
+                  >
+                    <View style={styles.platformInfo}>
+                      <View style={styles.platformNameRow}>
+                        <Text style={styles.platformName}>{platform.name}</Text>
+                        <Text style={styles.platformPercentage}>
+                          {platform.percentage.toFixed(1)}%
+                        </Text>
+                      </View>
+                      <View style={styles.progressBarContainer}>
+                        <View
+                          style={[
+                            styles.progressBar,
+                            { width: `${Math.max(platform.percentage, 2)}%` },
+                          ]}
+                        />
+                      </View>
+                      <View style={styles.platformStats}>
+                        <Text style={styles.platformStat}>
+                          {platform.trips} {platform.trips === 1 ? 'trip' : 'trips'}
+                        </Text>
+                        <Text style={styles.platformStatDot}>•</Text>
+                        <Text style={styles.platformStat}>
+                          {platform.miles.toFixed(1)} mi
+                        </Text>
+                        <Text style={styles.platformStatDot}>•</Text>
+                        <Text style={styles.platformStat}>
+                          {formatHours(platform.hours)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.platformEarnings}>
+                      {formatCurrency(platform.earnings)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -541,5 +641,87 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  // Analytics styles
+  analyticsSection: {
+    marginBottom: 20,
+  },
+  analyticsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  analyticsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  analyticsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  platformRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  platformInfo: {
+    flex: 1,
+  },
+  platformNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  platformName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  platformPercentage: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    marginBottom: 6,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#3B82F6',
+    borderRadius: 3,
+  },
+  platformStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  platformStat: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  platformStatDot: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    marginHorizontal: 6,
+  },
+  platformEarnings: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#059669',
+    fontVariant: ['tabular-nums'],
+    marginLeft: 12,
   },
 });
