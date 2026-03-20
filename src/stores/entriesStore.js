@@ -78,6 +78,7 @@ export const useEntriesStore = create((set, get) => ({
       date: adjustmentData.date || new Date().toISOString().split('T')[0],
       amount: parseFloat(adjustmentData.amount) || 0,
       platformId: adjustmentData.platformId || null,
+      note: adjustmentData.note || 'CA Prop 22 Adjustment',
       createdAt: new Date().toISOString(),
     };
 
@@ -130,6 +131,18 @@ export const useEntriesStore = create((set, get) => ({
   clearAllEntries: () => {
     set({ entries: [], caAdjustments: [] });
     get()._persistEntries();
+    get()._persistAdjustments();
+  },
+
+  // Restore data from backup
+  restoreData: (entries, platforms, caAdjustments) => {
+    set({
+      entries: entries || [],
+      platforms: platforms || DEFAULT_PLATFORMS,
+      caAdjustments: caAdjustments || [],
+    });
+    get()._persistEntries();
+    get()._persistPlatforms();
     get()._persistAdjustments();
   },
 

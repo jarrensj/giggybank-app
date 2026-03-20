@@ -7,15 +7,25 @@ import {
   Switch,
   TextInput,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
+import { Download, Upload, FileText } from 'lucide-react-native';
 
 import { useSettingsStore } from '../../src/stores/settingsStore';
+import { useEntriesStore } from '../../src/stores/entriesStore';
 
 export default function SettingsScreen() {
   const settings = useSettingsStore();
   const updateSetting = useSettingsStore((state) => state.updateSetting);
+  const entries = useEntriesStore((state) => state.entries);
+  const platforms = useEntriesStore((state) => state.platforms);
+  const caAdjustments = useEntriesStore((state) => state.caAdjustments);
+  const restoreData = useEntriesStore((state) => state.restoreData);
 
   const [editingMileage, setEditingMileage] = useState(false);
   const [mileageInput, setMileageInput] = useState(settings.mileageRate.toString());
@@ -24,6 +34,126 @@ export default function SettingsScreen() {
 
   const handleTaxRateChange = (value) => {
     updateSetting('taxRate', Math.round(value));
+  };
+
+  // Export CSV
+  const handleExportCSV = async () => {
+    try {
+      if (entries.length === 0) {
+        Alert.alert('No Data', 'There are no entries to export.');
+        return;
+      }
+
+      // Create CSV content
+      const headers = ['Date', 'Platform', 'Type', 'Base Pay', 'Tips', 'Earnings', 'Miles', 'Hours', 'Gas Cost'];
+      const rows = entries.map((entry) => {
+        const platform = platforms.find((p) => p.id === entry.platformId);
+        return [
+          entry.date,
+          platform?.name || 'Unknown',
+          entry.entryType,
+          entry.basePay || 0,
+          entry.tips || 0,
+          entry.earnings || 0,
+          entry.miles || 0,
+          entry.hours || 0,
+          entry.gasCost || 0,
+        ].join(',');
+      });
+
+      const csv = [headers.join(','), ...rows].join('\n');
+
+      // Save to file
+      const filename = `giggybank_export_${new Date().toISOString().split('T')[0]}.csv`;
+      const filepath = FileSystem.documentDirectory + filename;
+      await FileSystem.writeAsStringAsync(filepath, csv);
+
+      // Share the file
+      await Sharing.shareAsync(filepath, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Export Entries as CSV',
+      });
+    } catch (error) {
+      Alert.alert('Export Failed', 'Unable to export CSV file.');
+    }
+  };
+
+  // Export JSON backup
+  const handleBackup = async () => {
+    try {
+      const backupData = {
+        version: '1.0.0',
+        exportedAt: new Date().toISOString(),
+        entries,
+        platforms,
+        caAdjustments,
+        settings: {
+          taxRate: settings.taxRate,
+          includeSelfEmploymentTax: settings.includeSelfEmploymentTax,
+          mileageRate: settings.mileageRate,
+          includeVehicleWear: settings.includeVehicleWear,
+          vehicleWearPerMile: settings.vehicleWearPerMile,
+          californiaMode: settings.californiaMode,
+        },
+      };
+
+      const json = JSON.stringify(backupData, null, 2);
+      const filename = `giggybank_backup_${new Date().toISOString().split('T')[0]}.json`;
+      const filepath = FileSystem.documentDirectory + filename;
+      await FileSystem.writeAsStringAsync(filepath, json);
+
+      await Sharing.shareAsync(filepath, {
+        mimeType: 'application/json',
+        dialogTitle: 'Backup Data',
+      });
+    } catch (error) {
+      Alert.alert('Backup Failed', 'Unable to create backup file.');
+    }
+  };
+
+  // Import JSON backup
+  const handleRestore = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      const content = await FileSystem.readAsStringAsync(file.uri);
+      const data = JSON.parse(content);
+
+      // Validate backup structure
+      if (!data.entries || !Array.isArray(data.entries)) {
+        Alert.alert('Invalid Backup', 'This file is not a valid Giggy Bank backup.');
+        return;
+      }
+
+      Alert.alert(
+        'Restore Backup',
+        `This will replace all current data with ${data.entries.length} entries from the backup. Continue?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Restore',
+            style: 'destructive',
+            onPress: () => {
+              restoreData(data.entries, data.platforms, data.caAdjustments);
+              if (data.settings) {
+                Object.entries(data.settings).forEach(([key, value]) => {
+                  updateSetting(key, value);
+                });
+              }
+              Alert.alert('Success', 'Data restored successfully.');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Restore Failed', 'Unable to restore from backup file.');
+    }
   };
 
   const handleMileageSave = () => {
@@ -213,9 +343,51 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data</Text>
           <View style={styles.sectionCard}>
-            <Text style={styles.placeholderText}>
-              Export and backup options coming soon
-            </Text>
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleExportCSV}
+              activeOpacity={0.7}
+            >
+              <FileText color="#3B82F6" size={22} />
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionLabel}>Export CSV</Text>
+                <Text style={styles.actionDescription}>
+                  Export all entries as spreadsheet
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleBackup}
+              activeOpacity={0.7}
+            >
+              <Download color="#3B82F6" size={22} />
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionLabel}>Backup Data</Text>
+                <Text style={styles.actionDescription}>
+                  Save all data as JSON file
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={handleRestore}
+              activeOpacity={0.7}
+            >
+              <Upload color="#3B82F6" size={22} />
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionLabel}>Restore Backup</Text>
+                <Text style={styles.actionDescription}>
+                  Import data from JSON file
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -368,5 +540,25 @@ const styles = StyleSheet.create({
     minWidth: 50,
     textAlign: 'right',
     padding: 0,
+  },
+  // Action buttons
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  actionDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });
