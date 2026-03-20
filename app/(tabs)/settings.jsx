@@ -15,6 +15,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Download, Upload, FileText, Trash2 } from 'lucide-react-native';
+import Constants from 'expo-constants';
 
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { useEntriesStore } from '../../src/stores/entriesStore';
@@ -444,7 +445,9 @@ export default function SettingsScreen() {
           <View style={styles.sectionCard}>
             <View style={styles.settingRow}>
               <Text style={styles.settingLabel}>Version</Text>
-              <Text style={styles.settingValueMuted}>v1.0.0-beta</Text>
+              <Text style={styles.settingValueMuted}>
+                v{Constants.expoConfig?.version || '1.0.0-beta'}
+              </Text>
             </View>
           </View>
         </View>
