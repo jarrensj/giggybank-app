@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useSettingsStore } from '../src/stores/settingsStore';
 import { useEntriesStore } from '../src/stores/entriesStore';
+import { initializeRevenueCat } from '../src/services/revenuecat';
 
 function RootLayoutNav() {
   const router = useRouter();
@@ -12,35 +13,41 @@ function RootLayoutNav() {
   const [isReady, setIsReady] = useState(false);
 
   const onboardingComplete = useSettingsStore((state) => state.onboardingComplete);
+  const subscribed = useSettingsStore((state) => state.subscribed);
   const settingsHydrated = useSettingsStore((state) => state._hasHydrated);
   const entriesHydrated = useEntriesStore((state) => state._hasHydrated);
 
-  // Hydrate stores on app start
+  // Hydrate stores and initialize RevenueCat on app start
   useEffect(() => {
     const hydrate = async () => {
       await Promise.all([
         useSettingsStore.getState().hydrate(),
         useEntriesStore.getState().hydrate(),
       ]);
+      await initializeRevenueCat();
       setIsReady(true);
     };
     hydrate();
   }, []);
 
-  // Handle navigation based on onboarding state
+  // Handle navigation based on onboarding and subscription state
   useEffect(() => {
     if (!isReady) return;
 
     const inOnboarding = segments[0] === 'onboarding';
+    const inPaywall = segments[0] === 'paywall';
 
     if (!onboardingComplete && !inOnboarding) {
       // Not onboarded yet, redirect to onboarding
       router.replace('/onboarding');
-    } else if (onboardingComplete && inOnboarding) {
-      // Already onboarded but on onboarding screen, go to main app
+    } else if (onboardingComplete && !subscribed && !inPaywall) {
+      // Onboarded but not subscribed, show paywall
+      router.replace('/paywall');
+    } else if (onboardingComplete && subscribed && (inOnboarding || inPaywall)) {
+      // Fully set up, go to main app
       router.replace('/(tabs)/today');
     }
-  }, [isReady, onboardingComplete, segments]);
+  }, [isReady, onboardingComplete, subscribed, segments]);
 
   // Show loading while hydrating
   if (!isReady) {
@@ -61,6 +68,13 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="onboarding"
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="paywall"
         options={{
           headerShown: false,
           gestureEnabled: false,

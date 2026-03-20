@@ -21,6 +21,7 @@ const initialState = {
 
   // App state
   onboardingComplete: false,
+  subscribed: false,
 
   // Theme
   theme: 'system', // 'light', 'dark', 'system'
@@ -68,6 +69,11 @@ export const useSettingsStore = create((set, get) => ({
     get()._persist();
   },
 
+  setSubscribed: (subscribed) => {
+    set({ subscribed });
+    get()._persist();
+  },
+
   setTheme: (theme) => {
     set({ theme });
     get()._persist();
@@ -98,6 +104,7 @@ export const useSettingsStore = create((set, get) => ({
       vehicleWearPerMile: state.vehicleWearPerMile,
       californiaMode: state.californiaMode,
       onboardingComplete: state.onboardingComplete,
+      subscribed: state.subscribed,
       theme: state.theme,
     };
     await saveData(STORAGE_KEYS.SETTINGS, dataToSave);
